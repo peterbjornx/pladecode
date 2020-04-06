@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>961</width>
-    <height>745</height>
+    <height>836</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -74,6 +74,10 @@
     <addaction name="action_CreatePlane"/>
     <addaction name="action_CreateGroup"/>
     <addaction name="action_ProbeCell"/>
+    <addaction name="action_SetCell"/>
+    <addaction name="action_ResetCell"/>
+    <addaction name="action_ExcCell"/>
+    <addaction name="action_IdleMode"/>
    </widget>
    <widget class="QMenu" name="menu_View">
     <property name="title">
@@ -336,6 +340,27 @@
           </property>
          </widget>
         </item>
+        <item row="10" column="1" colspan="2">
+         <widget class="QComboBox" name="cellOrientationCombo">
+          <item>
+           <property name="text">
+            <string>Vertical</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Horizontal</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+        <item row="10" column="0">
+         <widget class="QLabel" name="label_15">
+          <property name="text">
+           <string>Cell orientation:</string>
+          </property>
+         </widget>
+        </item>
         <item row="1" column="0">
          <widget class="QLabel" name="label_5">
           <property name="text">
@@ -414,7 +439,7 @@
           </layout>
          </widget>
         </item>
-        <item row="11" column="1" colspan="2">
+        <item row="14" column="1" colspan="2">
          <spacer name="horizontalSpacer_3">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
@@ -426,6 +451,16 @@
            </size>
           </property>
          </spacer>
+        </item>
+        <item row="11" column="0">
+         <widget class="QLabel" name="label_16">
+          <property name="text">
+           <string>Class count:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="11" column="1" colspan="2">
+         <widget class="QSpinBox" name="classCountSpin"/>
         </item>
         <item row="0" column="2">
          <widget class="QLabel" name="label_9">
@@ -454,24 +489,10 @@
           </property>
          </widget>
         </item>
-        <item row="10" column="1" colspan="2">
-         <widget class="QComboBox" name="cellOrientationCombo">
-          <item>
-           <property name="text">
-            <string>Vertical</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>Horizontal</string>
-           </property>
-          </item>
-         </widget>
-        </item>
-        <item row="10" column="0">
-         <widget class="QLabel" name="label_15">
+        <item row="12" column="0" colspan="3">
+         <widget class="QPushButton" name="plotRefButton">
           <property name="text">
-           <string>Cell orientation:</string>
+           <string>Plot class reference</string>
           </property>
          </widget>
         </item>
@@ -505,6 +526,123 @@
     <layout class="QGridLayout" name="gridLayout_7">
      <item row="0" column="0">
       <widget class="QWidget" name="plotWidget" native="true"/>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QToolBar" name="modeToolbar">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <property name="toolButtonStyle">
+    <enum>Qt::ToolButtonTextUnderIcon</enum>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="action_OpenFile"/>
+   <addaction name="action_SaveFile"/>
+  </widget>
+  <widget class="QToolBar" name="fileToolbar">
+   <property name="windowTitle">
+    <string>toolBar_2</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="action_IdleMode"/>
+   <addaction name="action_ProbeCell"/>
+   <addaction name="action_CreatePlane"/>
+   <addaction name="action_CreateGroup"/>
+   <addaction name="action_SetCell"/>
+   <addaction name="action_ResetCell"/>
+   <addaction name="action_ExcCell"/>
+  </widget>
+  <widget class="QDockWidget" name="paletteDock">
+   <property name="windowTitle">
+    <string>Palette</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>1</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_5">
+    <layout class="QVBoxLayout" name="verticalLayout_3">
+     <item>
+      <widget class="QGroupBox" name="groupTempleGroup">
+       <property name="title">
+        <string>Group templates</string>
+       </property>
+       <layout class="QGridLayout" name="gridLayout_8">
+        <item row="1" column="0">
+         <widget class="QPushButton" name="createGroupTmplBtn">
+          <property name="text">
+           <string>Create</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QPushButton" name="deleteGroupTmplBtn">
+          <property name="text">
+           <string>Delete</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0" colspan="2">
+         <widget class="QListView" name="groupTemplateList"/>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupBox_2">
+       <property name="title">
+        <string>Manual cell class</string>
+       </property>
+       <layout class="QGridLayout" name="gridLayout_9">
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_17">
+          <property name="text">
+           <string>Current class:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QSpinBox" name="classSetSpin"/>
+        </item>
+        <item row="1" column="1">
+         <spacer name="horizontalSpacer_4">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <spacer name="verticalSpacer_2">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>40</height>
+        </size>
+       </property>
+      </spacer>
      </item>
     </layout>
    </widget>
@@ -614,6 +752,35 @@
    </property>
    <property name="shortcut">
     <string>E</string>
+   </property>
+  </action>
+  <action name="action_SetCell">
+   <property name="text">
+    <string>Set manual cell class</string>
+   </property>
+   <property name="shortcut">
+    <string>M</string>
+   </property>
+  </action>
+  <action name="action_ExcCell">
+   <property name="text">
+    <string>Exclude cell from ref.</string>
+   </property>
+   <property name="shortcut">
+    <string>N</string>
+   </property>
+  </action>
+  <action name="action_IdleMode">
+   <property name="text">
+    <string>Idle mode</string>
+   </property>
+   <property name="shortcut">
+    <string>Esc</string>
+   </property>
+  </action>
+  <action name="action_ResetCell">
+   <property name="text">
+    <string>Unset manual cell class</string>
    </property>
   </action>
  </widget>

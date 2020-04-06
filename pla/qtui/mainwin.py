@@ -35,6 +35,9 @@ MODE_CREATE_PLANE_1 = 1
 MODE_CREATE_PLANE_2 = 2
 MODE_CREATE_GROUP   = 3
 MODE_PROBE_CELL     = 4
+MODE_SET_CELL       = 5
+MODE_RESET_CELL     = 6
+MODE_EXC_CELL       = 7
 
 class PlaDecMainWin(QtWidgets.QMainWindow):
     def __init__(self):
@@ -49,6 +52,10 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
         self.renderingItem = None
         self.ui.graphicsView.setScene(self.scene)
         self.ui.graphicsView.setAlignment(QtCore.Qt.AlignTop|QtCore.Qt.AlignLeft)
+        self.templateListModel = QStandardItemModel()
+        self.ui.groupTemplateList.setModel(self.templateListModel)
+        self.ui.groupTemplateList.selectionModel().selectionChanged.connect(self.on_groupTemplateList_selectionChanged)
+        self.templateListModel.itemChanged.connect(self.on_groupTemplateList_itemChanged)
         self.model = QStandardItemModel()
         self.ui.projectTree.setModel(self.model)
         self.ui.projectTree.selectionModel().selectionChanged.connect(self.on_projectTree_selectionChanged)
@@ -64,6 +71,9 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
         layout.addWidget(self.toolbar)
         layout.addWidget(self.canvas)
         self.ui.plotWidget.setLayout(layout)
+        self.group_templates = [{"name":"None","dontuse":True}]
+        self.populateGroupTemplateList()
+        self.currentGroupTemplate = None
 
     def populateTree(self, list=None, parent=None):
         if list is None:
@@ -79,6 +89,57 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
             if ch is not None:
                 self.populateTree(ch,item)
         self.ui.projectTree.expandAll()
+
+    def populateGroupTemplateList(self):
+        self.templateListModel.clear()
+        parent = self.templateListModel.invisibleRootItem()
+        for i in self.group_templates:
+            item = QStandardItem(i["name"])
+            parent.appendRow(item)
+
+    def createGroupTemplate(self):
+        if not isinstance(self.selectedItem,pla_group):
+            self.showTempStatus("Error: To create a group template, select a group!")
+            return
+        self.group_templates.append(self.currentGroup.to_template("Template %i"%len(self.group_templates)))
+        self.populateGroupTemplateList()
+
+    def deleteGroupTemplate(self):
+        if self.currentGroupTemplate is None:
+            self.showTempStatus("Error: No template selected")
+            return
+        self.group_templates.remove(self.currentGroupTemplate)
+
+    @QtCore.pyqtSlot()
+    def on_createGroupTmplBtn_clicked(self):
+        self.createGroupTemplate()
+
+    @QtCore.pyqtSlot()
+    def on_deleteGroupTmplBtn_clicked(self):
+        self.deleteGroupTemplate()
+
+    @QtCore.pyqtSlot("QItemSelection")
+    def on_groupTemplateList_selectionChanged(self, selected):
+        """
+
+        :type selected: QItemSelection
+        """
+        a = selected.indexes()[0]  # type: QModelIndex
+        item = self.group_templates[a.row()]
+        print("select",item["name"])
+        if "dontuse" in item:
+            item = None
+        self.currentGroupTemplate = item
+
+    @QtCore.pyqtSlot("QStandardItem*")
+    def on_groupTemplateList_itemChanged(self, item):
+        pitem = self.group_templates[item.index().row()]
+        nt = item["name"]
+        if nt == pitem.name:
+            return
+        print("changed: "+pitem["name"]+" to "+nt)
+        pitem["name"] = nt
+        print("done")
 
     def view_plaimage(self, img):
         # Do initial draw
@@ -134,6 +195,7 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
                 self.ui.cellOrientationCombo.setCurrentIndex(1)
             else:
                 self.ui.cellOrientationCombo.setCurrentIndex(0)
+            self.ui.classCountSpin.setValue(item.class_count)
             region = True
         else:
             self.ui.regionSizeSpinW.setDisabled(False)
@@ -288,6 +350,10 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
         self.on_cellCropSpin_changed(self.selectedItem.crop_left,self.selectedItem.crop_top,self.selectedItem.crop_right,value)
 
     @QtCore.pyqtSlot("int")
+    def on_classCountSpin_valueChanged(self, value):
+        self.currentGroup.set_class_count( value )
+
+    @QtCore.pyqtSlot("int")
     def on_cellOrientationCombo_currentIndexChanged(self,idx):
         self.currentGroup.set_orientation(idx == 1)
         self.renderItem()
@@ -362,13 +428,13 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
             self.currentGroup = self.currentPlane.add_group()
             print(self.modeParam1)
             self.currentGroup.set_region_base( self.modeParam1 )
+            if self.currentGroupTemplate is not None:
+                self.currentGroup.load_template(self.currentGroupTemplate)
             self.selectProjectItem(self.currentGroup)
             self.populateTree()
             self.renderItem()
         elif self.mode == MODE_PROBE_CELL:
             self.modeParam1 = numpy.array([int(qimg_xy.x()),int(qimg_xy.y())]) + self.renderingItem.base_coord()
-            self.mode = MODE_IDLE
-            self.showModalStatus("Idle")
             t = self.currentGroup.get_cell_coord(self.modeParam1[0], self.modeParam1[1])
             if t:
                 x,y = t
@@ -376,6 +442,30 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
                 ax = self.figure.add_subplot(111)
                 self.currentGroup.classify_dbg(y,x,ax)
                 self.canvas.draw()
+        elif self.mode == MODE_SET_CELL:
+            self.modeParam1 = numpy.array([int(qimg_xy.x()),int(qimg_xy.y())]) + self.renderingItem.base_coord()
+            t = self.currentGroup.get_cell_coord(self.modeParam1[0], self.modeParam1[1])
+            if t:
+                x,y = t
+                self.showTempStatus("Set cell %i %i"%t)
+                self.currentGroup.set_cell_class(y,x,self.ui.classSetSpin.value())
+                self.renderItem()
+        elif self.mode == MODE_RESET_CELL:
+            self.modeParam1 = numpy.array([int(qimg_xy.x()),int(qimg_xy.y())]) + self.renderingItem.base_coord()
+            t = self.currentGroup.get_cell_coord(self.modeParam1[0], self.modeParam1[1])
+            if t:
+                x,y = t
+                self.showTempStatus("Reset cell %i %i"%t)
+                self.currentGroup.reset_cell_class(y,x)
+                self.renderItem()
+        elif self.mode == MODE_EXC_CELL:
+            self.modeParam1 = numpy.array([int(qimg_xy.x()),int(qimg_xy.y())]) + self.renderingItem.base_coord()
+            t = self.currentGroup.get_cell_coord(self.modeParam1[0], self.modeParam1[1])
+            if t:
+                x,y = t
+                self.showTempStatus("Excluded cell %i %i"%t)
+                self.currentGroup.toggle_cell_exc(y,x)
+                self.renderItem()
 
 
     @QtCore.pyqtSlot(QtCore.QPointF, int)
@@ -394,11 +484,28 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
     def on_action_ProbeCell_triggered(self):
         self.startProbeCell()
 
+    @QtCore.pyqtSlot()
+    def on_action_SetCell_triggered(self):
+        self.startSetCell()
+
+    @QtCore.pyqtSlot()
+    def on_action_ResetCell_triggered(self):
+        self.startResetCell()
+
+    @QtCore.pyqtSlot()
+    def on_action_ExcCell_triggered(self):
+        self.startExcludeCell()
+
+    @QtCore.pyqtSlot()
+    def on_action_IdleMode_triggered(self):
+        self.mode = MODE_IDLE
+        self.showModalStatus("Idle")
+
     def startCreatePlane(self):
         if not isinstance(self.selectedItem, pla):
             self.showTempStatus("Error: planes can only be added to a PLA")
             return
-        self.showModalStatus("Click top-left corner of plane")
+        self.showModalStatus("Click top-left corner of plane (Esc to cancel)")
         self.mode = MODE_CREATE_PLANE_1
 
     def startCreateGroup(self):
@@ -408,7 +515,7 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
         if not self.renderingItem == self.currentPlane:
             self.showTempStatus("Error: groups can only be added when the plane view is active")
             return
-        self.showModalStatus("Click top-left corner of group")
+        self.showModalStatus("Click top-left corner of group (Esc to cancel)")
         self.mode = MODE_CREATE_GROUP
 
     def startProbeCell(self):
@@ -418,9 +525,38 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
         if not self.renderingItem == self.currentPlane:
             self.showTempStatus("Error: groups can only be probed when the plane view is active")
             return
-        self.showModalStatus("Click top-left corner of group")
+        self.showModalStatus("Click cell to probe (Esc to cancel)")
         self.mode = MODE_PROBE_CELL
 
+    def startSetCell(self):
+        if not isinstance(self.selectedItem, pla_group):
+            self.showTempStatus("Error: cells can only be set on a group")
+            return
+        if not self.renderingItem == self.currentPlane:
+            self.showTempStatus("Error: groups can only be set when the plane view is active")
+            return
+        self.showModalStatus("Click cells to set (Esc to cancel)")
+        self.mode = MODE_SET_CELL
+
+    def startResetCell(self):
+        if not isinstance(self.selectedItem, pla_group):
+            self.showTempStatus("Error: cells can only be reset on a group")
+            return
+        if not self.renderingItem == self.currentPlane:
+            self.showTempStatus("Error: groups can only be reset when the plane view is active")
+            return
+        self.showModalStatus("Click cells to reset (Esc to cancel)")
+        self.mode = MODE_RESET_CELL
+
+    def startExcludeCell(self):
+        if not isinstance(self.selectedItem, pla_group):
+            self.showTempStatus("Error: cells can only be excluded on a group")
+            return
+        if not self.renderingItem == self.currentPlane:
+            self.showTempStatus("Error: groups can only be excluded when the plane view is active")
+            return
+        self.showModalStatus("Click cells to exclude from reference (Esc to cancel)")
+        self.mode = MODE_EXC_CELL
 
     def modelIndexToArray(self, mi):
         arr = []
@@ -557,6 +693,15 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
     @QtCore.pyqtSlot()
     def on_action_ClearPlot_triggered(self):
         self.figure.clear()
+        self.canvas.draw()
+
+    @QtCore.pyqtSlot()
+    def on_plotRefButton_clicked(self):
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+        self.currentGroup.plot_ref(ax)
+        self.canvas.draw()
+
 
 def run(app):
     import argparse
