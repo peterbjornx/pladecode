@@ -17,6 +17,9 @@ class pla_plane:
         self.groups = []
         self.region_base = numpy.array([0,0])
         self.region_size = numpy.array([10,10])
+        self.cells_overlap = False
+        self.cells_unset = True
+        self.unset_cells = self.cells
 
     def set_region(self, base, size):
         self.region_base = base
@@ -56,6 +59,45 @@ class pla_plane:
         br = tl + self.region_size
         cv.rectangle(target,tuple(tl),tuple(br),col)
 
+    def update_bits(self):
+        c = numpy.zeros_like(self.cells)
+        for g in self.groups:
+            rs = g.row_start
+            cs = g.col_start
+            b  = g.trimmed_bits
+            if b is None:
+                continue
+            bs = numpy.shape(b)
+            re = rs + bs[0]
+            ce = cs + bs[1]
+            try:
+                self.cells[rs:re,cs:ce] = b
+                c[rs:re,cs:ce] += 1
+            except:
+                pass
+        self.unset_cells = c
+        self.cells_overlap = numpy.amax(c,axis=(0,1)) >= 2
+        self.cells_unset   = numpy.amin(c,axis=(0,1)) < 1
+        pass
+
+    def cell_report(self):
+        rep = self.name
+        rep += "rows: %3i columns:%3i overlap:%i incomplete: %i\n"%\
+              (self.rows,self.cols,int(self.cells_overlap),int(self.cells_unset))
+        rep += "     "
+        for j in range(0, self.cols):
+            rep += "%i "%(j%10)
+        rep+="\n"
+        for i in range(0, self.rows):
+            r = "%3i: "%i
+            for j in range(0, self.cols):
+                if self.cells[i,j]:
+                    r += "1 "
+                else:
+                    r += "  "
+            rep += r.rstrip() + "\n"
+        rep+="\n"
+        return rep
     def render(self, mono=False, highlight=None, **kwargs ):
         target = None
         if mono:
@@ -107,3 +149,6 @@ class pla_plane:
         o = pla_plane(pla, dict["name"])
         o._deserialize(dict)
         return o
+
+    def get_render_item(self):
+        return self

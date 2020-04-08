@@ -12,6 +12,9 @@ class pla_group:
         self.name = name
         self.plane = plane
         self.horizontal = False
+        self.bit_horiz = False
+        self.bit_rows = 0
+        self.bit_cols = 0
         self.class_count = 4
         self.row_start   = 0
         self.row_count   = 1
@@ -23,10 +26,13 @@ class pla_group:
         self.crop_bottom = 0
         self.crop_left   = 0
         self.crop_right  = 0
+        self.bittrim_start = 0
+        self.bittrim_end = 0
         self.class_refs = None
         self.region_base = numpy.array([0, 0])
         self.man_cells   = None
         self.templated_refs = False
+        self.trimmed_bits = None
         self.update_cell_boxes()
 
     def base_coord(self):
@@ -61,6 +67,18 @@ class pla_group:
         self.horizontal = val
         self.do_classify()
 
+    def set_bit_orientation(self,val):
+        self.bit_horiz = val
+        self.update_cell_boxes()
+
+    def set_bit_trim(self,start,end):
+        self.bittrim_start = start
+        self.bittrim_end = end
+        self.update_cell_boxes()
+
+    def get_class_bits(self):
+        return int(numpy.round(numpy.log2(self.class_count)))
+
     def update_cell_boxes(self):
         self.auto_cells  = numpy.zeros((self.row_count, self.col_count),dtype="int")
         if self.man_cells is None or numpy.shape(self.man_cells) != (self.row_count, self.col_count):
@@ -79,8 +97,18 @@ class pla_group:
         self.region_size = numpy.array([int(self.col_width * self.col_count), int(self.row_height * self.row_count)])
         self.cell_width = self.cell_right[0] - self.cell_left[0]
         self.cell_height = self.cell_bottom[0] - self.cell_top[0]
+        self.bit_rows = self.row_count
+        self.bit_cols = self.col_count
+        if self.bit_horiz:
+            self.bit_cols *= self.get_class_bits()
+        else:
+            self.bit_rows *= self.get_class_bits()
+        self.auto_bits = numpy.zeros((self.bit_rows,self.bit_cols),dtype="int")
         self.generate_reference()
         self.do_classify()
+
+    def get_render_item(self):
+        return self.plane
 
     def set_class_count(self,value):
         self.class_count = value
@@ -189,6 +217,25 @@ class pla_group:
                     self.auto_cells[i, j] = self.classify_chisq(i, j)
         except:
             print("FOO!")
+        self.do_binary()
+
+    def do_binary(self):
+        bits = self.get_class_bits()
+        for i in range(0, self.row_count):
+            for j in range(0, self.col_count):
+                v = self.get_cell_class(i,j)
+                for k in range(0, bits):
+                    b = ((v >> k) & 1) != 0
+                    if self.bit_horiz:
+                        self.auto_bits[i,j*bits+k] = b
+                    else:
+                        self.auto_bits[i*bits+k,j] = b
+        if self.bit_horiz:
+            bs = self.auto_bits[::,self.bittrim_start:self.bit_cols-self.bittrim_end]
+        else:
+            bs = self.auto_bits[self.bittrim_start:self.bit_rows-self.bittrim_end,::]
+        self.trimmed_bits = bs
+        self.plane.update_bits()
 
     def get_cell_flattened(self, r, c):
         c = self.get_cell(r,c)
@@ -287,9 +334,12 @@ class pla_group:
         if not template_only:
             dict["man_cells"] = self.man_cells.tolist()
             dict["exc_cells"] = self.exc_cells.tolist()
+        dict["bit_horiz"] = self.bit_horiz
+        dict["bittrim_start"] = self.bittrim_start
+        dict["bittrim_end"] = self.bittrim_end
         return dict
 
-    def _deserialize(self, dict):
+    def _deserialize(self, dict,only_refs=False):
         template_only = "template" in dict
         if not template_only:
             self.name = dict["name"]
@@ -300,6 +350,11 @@ class pla_group:
         self.col_start = dict["col_start"]
         self.col_count = dict["col_count"]
         self.col_width = dict["col_width"]
+        if "bittrim_start" in dict:
+            self.bittrim_start = dict["bittrim_start"]
+            self.bittrim_end = dict["bittrim_end"]
+        if "bit_horiz" in dict:
+            self.bit_horiz = dict["bit_horiz"]
         if "horiz" in dict:
             self.horizontal = dict["horiz"]
         if "class_count" in dict:
@@ -325,6 +380,15 @@ class pla_group:
     def load_template(self,tmp):
         self.man_cells = None
         self._deserialize(tmp)
+
+    def load_template_refs(self,dict):
+        if "class_refs" in dict:
+            self.templated_refs = True
+            self.class_refs = numpy.array(dict["class_refs"])
+            self.class_count = dict["class_count"]
+            self.update_cell_boxes()
+            return True
+        return False
 
     @classmethod
     def deserialize(cls, plane, dict):

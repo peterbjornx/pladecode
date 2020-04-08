@@ -64,3 +64,12 @@ class pla:
         p = pla(dict["name"],dict["image"])
         p._deserialize(dict)
         return p
+
+    def get_render_item(self):
+        return self
+
+    def plane_report(self):
+        out = "Plane report for "+self.name+"\n\n"
+        for p in self.planes:
+            out += p.cell_report()
+        return out

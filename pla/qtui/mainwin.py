@@ -195,7 +195,16 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
                 self.ui.cellOrientationCombo.setCurrentIndex(1)
             else:
                 self.ui.cellOrientationCombo.setCurrentIndex(0)
+            if item.bit_horiz:
+                self.ui.bitOrientationCombo.setCurrentIndex(1)
+            else:
+                self.ui.bitOrientationCombo.setCurrentIndex(0)
             self.ui.classCountSpin.setValue(item.class_count)
+            self.ui.templRefCheckbox.setChecked(item.templated_refs)
+            self.ui.binSizeSpinC.setValue(item.bit_cols)
+            self.ui.binSizeSpinR.setValue(item.bit_rows)
+            self.ui.bitTrimSpinStart.setValue(item.bittrim_start)
+            self.ui.bitTrimSpinEnd.setValue(item.bittrim_end)
             region = True
         else:
             self.ui.regionSizeSpinW.setDisabled(False)
@@ -211,11 +220,24 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
         else:
             self.ui.regionGroupBox.setDisabled(True)
 
+    @QtCore.pyqtSlot()
+    def on_templRefCheckbox_clicked(self):
+        self.selectedItem.templated_refs = self.selectedItem.templated_refs and self.ui.templRefCheckbox.isChecked()
+        #TODO: Re-run classify
+        self.updateItemEdit()
+
     def on_cellCropSpin_changed(self, l,t,r,b):
         if l == self.selectedItem.crop_left and t == self.selectedItem.crop_top and \
            r == self.selectedItem.crop_right and b == self.selectedItem.crop_bottom:
             return
         self.selectedItem.set_crop(l,t,r,b)
+        self.updateItemEdit()
+        self.renderItem()
+
+    def on_bitTrimSpin_changed(self, start, end):
+        if start == self.selectedItem.bittrim_start and end == self.selectedItem.bittrim_end:
+            return
+        self.selectedItem.set_bit_trim(start, end)
         self.updateItemEdit()
         self.renderItem()
 
@@ -358,6 +380,20 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
         self.currentGroup.set_orientation(idx == 1)
         self.renderItem()
 
+    @QtCore.pyqtSlot("int")
+    def on_bitOrientationCombo_currentIndexChanged(self,idx):
+        self.currentGroup.set_bit_orientation(idx == 1)
+        self.updateItemEdit()
+        self.renderItem()
+
+    @QtCore.pyqtSlot("int")
+    def on_bitTrimSpinStart_valueChanged(self, value):
+        self.on_bitTrimSpin_changed(value,self.selectedItem.bittrim_end)
+
+    @QtCore.pyqtSlot("int")
+    def on_bitTrimSpinEnd_valueChanged(self, value):
+        self.on_bitTrimSpin_changed(self.selectedItem.bittrim_start,value)
+
     def setCurrentPLA(self,pla):
         self.currentPLA = pla
         self.currentPlane = None
@@ -375,6 +411,7 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
     def setRenderingItem(self,item):
         if item == self.renderingItem:
             return
+        item = item.get_render_item()
         self.renderingItem = item
         self.renderItem()
         self.ui.graphicsView.zoomToFit()
@@ -385,6 +422,8 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
             self.setWindowTitle("PLA decoder - %s"%self.getProjectItemName(self.renderingItem))
         else:
             self.setWindowTitle("PLA decoder")
+        if self.currentPlane is not None:
+            self.ui.textOutputEdit.document().setPlainText(self.currentPlane.cell_report())
 
     def showTempStatus(self, *msg):
         full_msg = " ".join((str(part) for part in msg))
@@ -466,6 +505,19 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
                 self.showTempStatus("Excluded cell %i %i"%t)
                 self.currentGroup.toggle_cell_exc(y,x)
                 self.renderItem()
+
+    @QtCore.pyqtSlot()
+    def on_copyTemplateRefPushButton_clicked(self):
+        if self.currentGroupTemplate is None:
+            self.showTempStatus("Cannot copy reference when no template is selected")
+            return
+        if not self.currentGroup.load_template_refs(self.currentGroupTemplate):
+            self.showTempStatus("Failed to load template refs")
+        else:
+            self.showTempStatus("Loaded template refs")
+        self.renderItem()
+        self.updateItemEdit()
+
 
 
     @QtCore.pyqtSlot(QtCore.QPointF, int)
@@ -671,6 +723,19 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
         json.dump(self.currentPLA.serialize(),fp, indent=4)
         fp.close()
         self.currentPLA.serialize_path = path
+
+    @QtCore.pyqtSlot()
+    def on_action_ExportPlaneReport_triggered(self):
+        if not self.currentPLA:
+            self.showTempStatus("Nothing to save")
+        path = QFileDialog.getSaveFileName(None, 'Generate plane report for %s'%self.currentPLA.name, '.', 'Text files (*.txt);;All files (*.*)')
+        if path == ('',''):
+            return
+        path = self.handleFileSelection(path)
+        print(path)
+        fp = open(path,"w")
+        fp.write(self.currentPLA.plane_report())
+        fp.close()
 
     @QtCore.pyqtSlot()
     def on_action_ShowCellBoxes_triggered(self):
