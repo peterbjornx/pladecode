@@ -33,7 +33,7 @@ class pla_group:
         self.man_cells   = None
         self.templated_refs = False
         self.trimmed_bits = None
-        self.update_cell_boxes()
+        self.update_cell_boxes(rec=True)
 
     def base_coord(self):
         return self.region_base
@@ -79,7 +79,7 @@ class pla_group:
     def get_class_bits(self):
         return int(numpy.round(numpy.log2(self.class_count)))
 
-    def update_cell_boxes(self):
+    def update_cell_boxes(self,rec=False):
         self.auto_cells  = numpy.zeros((self.row_count, self.col_count),dtype="int")
         if self.man_cells is None or numpy.shape(self.man_cells) != (self.row_count, self.col_count):
             self.man_cells   = numpy.zeros((self.row_count, self.col_count),dtype="int")- 1
@@ -104,8 +104,8 @@ class pla_group:
         else:
             self.bit_rows *= self.get_class_bits()
         self.auto_bits = numpy.zeros((self.bit_rows,self.bit_cols),dtype="int")
-        self.generate_reference()
-        self.do_classify()
+        self.generate_reference(rec=rec)
+        self.do_classify(rec=rec)
 
     def get_render_item(self):
         return self.plane
@@ -179,7 +179,7 @@ class pla_group:
         else:
             return self.cell_height
 
-    def generate_reference(self):
+    def generate_reference(self,rec=False):
         n = [0]*self.class_count
         a = numpy.zeros((self.class_count,self.get_cell_dim()))
         for r in range(0, self.row_count):
@@ -208,7 +208,7 @@ class pla_group:
     def get_cell(self, r, c):
         return self.plane.pla.image.mono[self.cell_top[r]:self.cell_bottom[r],self.cell_left[c]:self.cell_right[c]]
 
-    def do_classify(self):
+    def do_classify(self,rec=False):
         if self.class_refs is None:
             return
         try:
@@ -217,9 +217,9 @@ class pla_group:
                     self.auto_cells[i, j] = self.classify_chisq(i, j)
         except:
             print("FOO!")
-        self.do_binary()
+        self.do_binary(rec=rec)
 
-    def do_binary(self):
+    def do_binary(self,rec=False):
         bits = self.get_class_bits()
         for i in range(0, self.row_count):
             for j in range(0, self.col_count):
@@ -235,7 +235,8 @@ class pla_group:
         else:
             bs = self.auto_bits[self.bittrim_start:self.bit_rows-self.bittrim_end,::]
         self.trimmed_bits = bs
-        self.plane.update_bits()
+        if not rec:
+            self.plane.update_bits()
 
     def get_cell_flattened(self, r, c):
         c = self.get_cell(r,c)
@@ -370,7 +371,7 @@ class pla_group:
         if "class_refs" in dict:
             self.class_refs = numpy.array(dict["class_refs"])
         self.crop_left,self.crop_top,self.crop_right,self.crop_bottom = dict["crop"]
-        self.update_cell_boxes()
+        self.update_cell_boxes(rec=True)
 
     def to_template(self,name):
         dict =  self.serialize(template_only=True)

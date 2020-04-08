@@ -258,10 +258,10 @@
         <string>Plane</string>
        </property>
        <layout class="QGridLayout" name="gridLayout_4">
-        <item row="1" column="0">
-         <widget class="QLabel" name="label_4">
-          <property name="text">
-           <string>Size:</string>
+        <item row="1" column="2">
+         <widget class="QSpinBox" name="planeRowsSpin">
+          <property name="maximum">
+           <number>100000</number>
           </property>
          </widget>
         </item>
@@ -271,19 +271,6 @@
            <number>100000</number>
           </property>
          </widget>
-        </item>
-        <item row="2" column="1" colspan="2">
-         <spacer name="horizontalSpacer_2">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>40</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
         </item>
         <item row="0" column="1">
          <widget class="QLabel" name="label_6">
@@ -305,10 +292,51 @@
           </property>
          </widget>
         </item>
-        <item row="1" column="2">
-         <widget class="QSpinBox" name="planeRowsSpin">
-          <property name="maximum">
-           <number>100000</number>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_4">
+          <property name="text">
+           <string>Size:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="1" colspan="2">
+         <spacer name="horizontalSpacer_2">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item row="2" column="1" colspan="2">
+         <widget class="QCheckBox" name="planeAndCheckbox">
+          <property name="text">
+           <string>Is AND plane</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1" colspan="2">
+         <widget class="QComboBox" name="planeInputOrientationCombo">
+          <item>
+           <property name="text">
+            <string>Vertical</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Horizontal</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+        <item row="4" column="1" colspan="2">
+         <widget class="QCheckBox" name="planeInputPolCheckbox">
+          <property name="text">
+           <string>Inverted inputs</string>
           </property>
          </widget>
         </item>

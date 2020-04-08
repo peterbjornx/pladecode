@@ -173,6 +173,12 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
             self.ui.planeGroupBox.setDisabled(False)
             self.ui.planeColsSpin.setValue(item.cols)
             self.ui.planeRowsSpin.setValue(item.rows)
+            self.ui.planeAndCheckbox.setChecked(item.is_and)
+            if item.horiz_inputs:
+                self.ui.planeInputOrientationCombo.setCurrentIndex(1)
+            else:
+                self.ui.planeInputOrientationCombo.setCurrentIndex(0)
+            self.ui.planeInputPolCheckbox.setChecked(item.input_pol)
             region = True
         else:
             self.ui.planeGroupBox.setDisabled(True)
@@ -225,6 +231,19 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
         self.selectedItem.templated_refs = self.selectedItem.templated_refs and self.ui.templRefCheckbox.isChecked()
         #TODO: Re-run classify
         self.updateItemEdit()
+        self.renderItem()
+
+    @QtCore.pyqtSlot()
+    def on_planeInputPolCheckbox_clicked(self):
+        self.selectedItem.set_input_pol(self.ui.planeInputPolCheckbox.isChecked())
+        self.updateItemEdit()
+        self.renderItem()
+
+    @QtCore.pyqtSlot()
+    def on_planeAndCheckbox_clicked(self):
+        self.selectedItem.set_and_plane(self.ui.planeAndCheckbox.isChecked())
+        self.updateItemEdit()
+        self.renderItem()
 
     def on_cellCropSpin_changed(self, l,t,r,b):
         if l == self.selectedItem.crop_left and t == self.selectedItem.crop_top and \
@@ -383,6 +402,12 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
     @QtCore.pyqtSlot("int")
     def on_bitOrientationCombo_currentIndexChanged(self,idx):
         self.currentGroup.set_bit_orientation(idx == 1)
+        self.updateItemEdit()
+        self.renderItem()
+
+    @QtCore.pyqtSlot("int")
+    def on_planeInputOrientationCombo_currentIndexChanged(self,idx):
+        self.currentPlane.set_input_orientation(idx == 1)
         self.updateItemEdit()
         self.renderItem()
 
