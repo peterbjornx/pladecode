@@ -151,7 +151,7 @@ class pla_group:
         self.invalidate_cell_values()
 
     def invalidate_cell_pos(self):
-        self.cell_grid_pos = False
+        self.cell_pos_valid = False
         self.invalidate_cell_values()
 
     def invalidate_cell_values(self):

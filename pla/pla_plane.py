@@ -128,6 +128,7 @@ class pla_plane:
             self.cells = oldcells[0:rows,0:cols]
         self.rows = rows
         self.cols = cols
+        self.invalidate_cells()
 
     def add_group(self):
         g = pla_group(self, "Group %i"%len(self.groups))
