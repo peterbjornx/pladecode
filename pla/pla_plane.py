@@ -31,10 +31,22 @@ class pla_plane:
         self.is_and = False
         self.horiz_inputs = False
         self.input_pol = False
+        self.minterms_valid = False
+        self.cell_values_valid = False
 
-    def do_minterm(self):
+    def invalidate_cells(self):
+        self.cell_values_valid = False
+        self.invalidate_minterms()
+
+    def invalidate_minterms(self):
+        self.minterms_valid = False
+
+    def ensure_minterms(self):
         if not self.is_and:
             return
+        if self.minterms_valid:
+            return
+        self.ensure_cells()
         c = self.cells
         if self.horiz_inputs:
             c.transpose()
@@ -43,14 +55,15 @@ class pla_plane:
         self.output_count = s[1]
         self.minterms = numpy.zeros((self.output_count, self.input_count), dtype="int")
         if self.input_pol:
-            r0 = pla_plane.MINTERM_LOW
-            r1 = pla_plane.MINTERM_HIGH
+            r1 = pla_plane.MINTERM_LOW
+            r0 = pla_plane.MINTERM_HIGH
         else:
             r0 = pla_plane.MINTERM_LOW
             r1 = pla_plane.MINTERM_HIGH
         for i in range(0, self.input_count):
             self.minterms[::,i] = r0 * c[i*2,::] + r1 * c[i*2+1,::]
         self.minterms_conflict = numpy.amax(self.minterms,axis=(0,1)) > pla_plane.MINTERM_HIGH
+        self.minterms_valid = True
         #print("enum")
         #self.enumerate_inputs()
         #print("strip")
@@ -59,6 +72,7 @@ class pla_plane:
 
     def generate_c_andplane(self):
         res = ""
+        self.ensure_minterms()
         if self.input_count > 31:
             return "Not supported for input size > int32"
         mask = []
@@ -73,17 +87,18 @@ class pla_plane:
     uint32_t andplane_val[%i] = {%s};
         """%(self.input_count,mask,self.input_count,val)
         return res
+
     def set_input_orientation(self, val):
         self.horiz_inputs = val
-        self.do_minterm()
+        self.invalidate_minterms()
 
     def set_and_plane(self,val):
         self.is_and = val
-        self.do_minterm()
+        self.invalidate_minterms()
 
     def set_input_pol(self,val):
         self.input_pol = val
-        self.do_minterm()
+        self.invalidate_minterms()
 
     def set_region(self, base, size):
         self.region_base = base
@@ -94,6 +109,15 @@ class pla_plane:
 
     def set_region_size(self, size):
         self.region_size = size
+
+    def get_region_base(self):
+        return self.region_base
+
+    def get_region_size(self):
+        return self.region_size
+
+    def base_coord(self):
+        return self.region_base
 
     def set_size(self, rows, cols):
         oldcells = self.cells
@@ -110,10 +134,6 @@ class pla_plane:
         self.groups.append(g)
         return g
 
-    def compute(self):
-        for g in self.groups:
-            g.compute()
-
     def overlay(self, target, highlight=None,**kwargs):
         if highlight == self:
             col = pla_config.sel_colour
@@ -123,13 +143,14 @@ class pla_plane:
         br = tl + self.region_size
         cv.rectangle(target,tuple(tl),tuple(br),col)
 
-    def update_bits(self):
+    def ensure_cells(self):
+        if self.cell_values_valid:
+            return
         c = numpy.zeros_like(self.cells)
         for g in self.groups:
             rs = g.row_start
             cs = g.col_start
-            g.update_cell_boxes(rec=True)
-            b  = g.trimmed_bits
+            b  = g.get_data_bits()
             if b is None:
                 continue
             bs = numpy.shape(b)
@@ -143,7 +164,7 @@ class pla_plane:
         self.unset_cells = c
         self.cells_overlap = numpy.amax(c,axis=(0,1)) >= 2
         self.cells_unset   = numpy.amin(c,axis=(0,1)) < 1
-        self.do_minterm()
+        self.cell_values_valid = True
 
     @classmethod
     def int_minterm(cls, mt, vm1):
@@ -243,6 +264,7 @@ class pla_plane:
         pass
 
     def cell_report(self):
+        self.ensure_cells()
         rep = self.name
         rep += "rows: %3i columns:%3i overlap:%i incomplete: %i\n"%\
               (self.rows,self.cols,int(self.cells_overlap),int(self.cells_unset))
@@ -260,12 +282,15 @@ class pla_plane:
             rep += r.rstrip() + "\n"
         rep+="\n"
         if self.is_and:
+            self.ensure_minterms()
             rep+="minterms conflict:%i\n"%int(self.minterms_conflict)
             for i in range(0,self.output_count):
                 rep+="%3i: %s\n"%(i,pla_plane.str_minterm(self.minterms[i,::]))
-            for i in self.input_list:
-                rep+="ENN: %s\n"%(pla_plane.str_minterm(i))
+            rep += self.generate_c_andplane()
+            #for i in self.input_list:
+            #    rep+="ENN: %s\n"%(pla_plane.str_minterm(i))
         return rep
+
     def render(self, mono=False, highlight=None, **kwargs ):
         target = None
         if mono:
@@ -279,9 +304,6 @@ class pla_plane:
             g.render(target, offset=-self.region_base, highlight=highlight, **kwargs)
         return pla_image.pla_image(target, bgr=True)
 
-    def base_coord(self):
-        return self.region_base
-
     def children(self):
         return self.groups
 
@@ -293,6 +315,7 @@ class pla_plane:
         dict["name"] = self.name
         dict["rows"] = self.rows
         dict["cols"] = self.cols
+        self.ensure_cells()
         dict["cells"] = self.cells.tolist()
         groups = []
         for v in self.groups:
@@ -320,7 +343,6 @@ class pla_plane:
             self.horiz_inputs = dict["horiz_inputs"]
             self.input_pol = dict["input_pol"]
 
-        self.update_bits()
 
     @classmethod
     def deserialize(cls, pla, dict):

@@ -219,10 +219,12 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
 
         if region:
             self.ui.regionGroupBox.setEnabled(True)
-            self.ui.regionBaseSpinX.setValue(item.region_base[0])
-            self.ui.regionBaseSpinY.setValue(item.region_base[1])
-            self.ui.regionSizeSpinW.setValue(item.region_size[0])
-            self.ui.regionSizeSpinH.setValue(item.region_size[1])
+            rbs = item.get_region_base()
+            self.ui.regionBaseSpinX.setValue(rbs[0])
+            self.ui.regionBaseSpinY.setValue(rbs[1])
+            rsz = item.get_region_size()
+            self.ui.regionSizeSpinW.setValue(rsz[0])
+            self.ui.regionSizeSpinH.setValue(rsz[1])
         else:
             self.ui.regionGroupBox.setDisabled(True)
 
@@ -289,14 +291,14 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
         self.renderItem()
 
     def on_regionBaseSpin_changed(self,val):
-        if numpy.all(val == self.selectedItem.region_base):
+        if numpy.all(val == self.selectedItem.get_region_base()):
             return
         self.selectedItem.set_region_base(val)
         self.updateItemEdit()
         self.renderItem()
 
     def on_regionSizeSpin_changed(self, val):
-        if numpy.all(val == self.selectedItem.region_size):
+        if numpy.all(val == self.selectedItem.get_region_size()):
             return
         self.selectedItem.set_region_size(val)
         self.updateItemEdit()
@@ -322,23 +324,15 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
     def on_regionSizeSpinW_valueChanged(self, value):
         val = numpy.array([
             value,
-            self.selectedItem.region_size[1]
+            self.selectedItem.get_region_size()[1]
         ])
         self.on_regionSizeSpin_changed(val)
 
     @QtCore.pyqtSlot("int")
     def on_regionSizeSpinH_valueChanged(self, value):
         val = numpy.array([
-            self.selectedItem.region_size[0],
+            self.selectedItem.get_region_size()[0],
             value
-        ])
-        self.on_regionSizeSpin_changed(val)
-
-    @QtCore.pyqtSlot("int")
-    def on_regionSizeSpinW_valueChanged(self, value):
-        val = numpy.array([
-            value,
-            self.selectedItem.region_size[1]
         ])
         self.on_regionSizeSpin_changed(val)
 
@@ -726,6 +720,20 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
         _pla.serialize_path = path
         self.populateTree()
         self.selectProjectItem( _pla )
+
+    def createpla(self,path):
+        _pla = pla(path.split("/")[-1],path)
+        self.plalist.append(_pla)
+        self.populateTree()
+        self.selectProjectItem( _pla )
+
+    @QtCore.pyqtSlot()
+    def on_action_NewPLA_triggered(self):
+        path = QFileDialog.getOpenFileName(None, 'Open image', '.', 'PNG images (*.png);;All files (*.*)')
+        if path == ('',''):
+            return
+        path = self.handleFileSelection(path)
+        self.createpla(path)
 
     @QtCore.pyqtSlot()
     def on_action_OpenFile_triggered(self):
