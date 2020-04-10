@@ -145,7 +145,7 @@ class pla_plane:
         cv.rectangle(target,tuple(tl),tuple(br),col)
 
     def ensure_cells(self):
-        if self.cell_values_valid:
+        if self.cell_values_valid or self.rows <= 0 or self.cols <= 0:
             return
         c = numpy.zeros_like(self.cells)
         for g in self.groups:

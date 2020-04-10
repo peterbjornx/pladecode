@@ -69,7 +69,8 @@ class pla_group:
 
     def set_start(self, rows, cols):
         self.row_start = rows
-        self.col_start = cols #TODO: Invalidate PLA plane?
+        self.col_start = cols
+        self.plane.invalidate_cells()
 
     def set_cell_size(self, width, height):
         self.row_height = height
@@ -199,9 +200,9 @@ class pla_group:
         self.invalidate_bit_values()
 
     def set_cell_class(self, r, c, v):
-        self.man_cells[r, c] = v
         if (v != self.man_cells[r, c]) and not self.is_cell_exc(r,c):
             self.invalidate_reference()
+        self.man_cells[r, c] = v
         self.invalidate_bit_values()
 
     def toggle_cell_exc(self, r, c):
@@ -457,7 +458,8 @@ class pla_group:
                         col = pla_config.exc_colour
                     else:
                         col = pla_config.man_colour
-                    cv.putText( target, text, tl, cv.FONT_HERSHEY_SIMPLEX, pla_config.font_sz, col , thickness=1)
+                    if text != "0":
+                        cv.putText( target, text, tl, cv.FONT_HERSHEY_SIMPLEX, pla_config.font_sz, col , thickness=1)
 
     def plot_ref(self, ax):
         self.ensure_reference()
