@@ -1,10 +1,14 @@
 import numpy
 import cv2 as cv
-import matplotlib.pyplot as plt
 from pla import pla_config, pla_plane
 import time
 
 class pla_group:
+
+    CELL_AUTO      = -1
+    CELL_MANUAL    =  0
+    CELL_CONFIRMED =  1
+    CELL_EXCLUDED  =  2
 
     plane = ...  # type: pla_plane
 
@@ -110,8 +114,8 @@ class pla_group:
             return
         self.auto_cells  = numpy.zeros((self.row_count, self.col_count),dtype="int")
         if self.man_cells is None or numpy.shape(self.man_cells) != (self.row_count, self.col_count): #TODO: Lossless resize
-            self.man_cells  = numpy.zeros((self.row_count, self.col_count),dtype="int")- 1
-            self.exc_cells  = numpy.zeros((self.row_count, self.col_count),dtype="int")
+            self.man_cells  = numpy.zeros((self.row_count, self.col_count),dtype="int") - 1
+            self.typ_cells  = numpy.zeros((self.row_count, self.col_count),dtype="int") - 1
         self.cell_grid_valid = True
 
     def ensure_cell_pos(self):
@@ -175,15 +179,26 @@ class pla_group:
     def is_cell_ref(self, r, c):
         return self.is_cell_man(r,c) and not self.is_cell_exc(r,c)
 
+    def convert_cells(self):
+        self.ensure_cell_grid()
+        self.typ_cells = numpy.zeros((self.row_count, self.col_count),dtype="int")
+        for i in range(0, self.row_count):
+            for j in range(0, self.col_count):
+                if self.man_cells[i,j] == -1:
+                    self.typ_cells[i,j] = pla_group.CELL_AUTO
+                elif self.exc_cells[i,j] != 0:
+                    self.typ_cells[i,j] = pla_group.CELL_EXCLUDED
+                else:
+                    self.typ_cells[i,j] = pla_group.CELL_MANUAL
+        self.exc_cells = None
+
     def is_cell_man(self, r, c):
         self.ensure_cell_grid()
-        v = self.man_cells[r,c]
-        return v != -1
+        return self.typ_cells[r,c] == pla_group.CELL_EXCLUDED or self.typ_cells[r,c] == pla_group.CELL_MANUAL
 
     def is_cell_exc(self, r, c):
         self.ensure_cell_grid()
-        v = self.exc_cells[r,c]
-        return v != 0
+        return self.typ_cells[r,c] == pla_group.CELL_EXCLUDED
 
     def get_cell_class(self, r, c):
         self.ensure_cell_grid()
@@ -196,19 +211,31 @@ class pla_group:
     def reset_cell_class(self, r, c):
         if self.is_cell_ref(r,c):
             self.invalidate_reference()
-        self.man_cells[r,c] = -1
+        self.man_cells[r, c] = -1
+        self.typ_cells[r, c] = self.CELL_AUTO
         self.invalidate_bit_values()
 
     def set_cell_class(self, r, c, v):
         if (v != self.man_cells[r, c]) and not self.is_cell_exc(r,c):
             self.invalidate_reference()
+        self.typ_cells[r, c] = self.CELL_MANUAL
         self.man_cells[r, c] = v
         self.invalidate_bit_values()
 
     def toggle_cell_exc(self, r, c):
-        self.exc_cells[r, c] = 1 - self.exc_cells[r, c]
-        if self.is_cell_man(r,c):
+        if self.typ_cells[r, c] == self.CELL_EXCLUDED:
+            self.typ_cells[r, c] = self.CELL_MANUAL
+        if self.is_cell_man(r, c):
             self.invalidate_reference()
+
+    def set_cell_confirmed(self, r, c):
+        if self.typ_cells[r, c] == self.CELL_AUTO:
+            self.man_cells[r, c] = self.auto_cells[r, c]
+        self.typ_cells[r, c] = self.CELL_CONFIRMED
+
+    def set_row_confirmed(self, r):
+        for i in range( self.col_count ):
+            self.set_cell_confirmed( r, i )
 
     # Image utility methods
 
@@ -368,7 +395,7 @@ class pla_group:
         self.ensure_cell_grid()
         if not template_only:
             dict["man_cells"] = self.man_cells.tolist()
-            dict["exc_cells"] = self.exc_cells.tolist()
+            dict["typ_cells"] = self.typ_cells.tolist()
         return dict
 
     def _deserialize(self, dict,only_refs=False):
@@ -395,6 +422,10 @@ class pla_group:
             self.man_cells = numpy.array(dict["man_cells"])
         if "exc_cells" in dict and not template_only:
             self.exc_cells = numpy.array(dict["exc_cells"])
+        else:
+            self.exc_cells = None
+        if "typ_cells" in dict and not template_only:
+            self.typ_cells = numpy.array(dict["typ_cells"])
         if "templated_refs" in dict and not template_only:
             self.templated_refs = dict["templated_refs"]
         else:
@@ -402,6 +433,9 @@ class pla_group:
         if "class_refs" in dict:
             self.class_refs = numpy.array(dict["class_refs"])
         self.crop_left,self.crop_top,self.crop_right,self.crop_bottom = dict["crop"]
+        if self.exc_cells is not None:
+            self.convert_cells()
+
 
     @classmethod
     def deserialize(cls, plane, dict):
@@ -452,13 +486,16 @@ class pla_group:
                 for j in range(0, self.col_count):
                     tl = (self.cell_left[j] + offset[0], self.cell_bottom[i] + offset[1])
                     text="%i"%self.get_cell_class(i, j)
-                    if not self.is_cell_man(i,j):
+                    typ = self.typ_cells[i,j]
+                    if typ == pla_group.CELL_AUTO:
                         col = pla_config.dat_colour
-                    elif self.is_cell_exc(i,j):
+                    elif typ == pla_group.CELL_EXCLUDED:
                         col = pla_config.exc_colour
-                    else:
+                    elif typ == pla_group.CELL_MANUAL:
                         col = pla_config.man_colour
-                    if text != "0":
+                    elif typ == pla_group.CELL_CONFIRMED:
+                        col = pla_config.cfm_colour
+                    if text != "0" or self.is_cell_man(i,j):
                         cv.putText( target, text, tl, cv.FONT_HERSHEY_SIMPLEX, pla_config.font_sz, col , thickness=1)
 
     def plot_ref(self, ax):

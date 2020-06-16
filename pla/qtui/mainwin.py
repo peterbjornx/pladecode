@@ -38,6 +38,7 @@ MODE_PROBE_CELL     = 4
 MODE_SET_CELL       = 5
 MODE_RESET_CELL     = 6
 MODE_EXC_CELL       = 7
+MODE_CFM_ROW        = 8
 
 class PlaDecMainWin(QtWidgets.QMainWindow):
     def __init__(self):
@@ -61,7 +62,7 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
         self.ui.projectTree.selectionModel().selectionChanged.connect(self.on_projectTree_selectionChanged)
         self.model.itemChanged.connect(self.on_projectTree_itemChanged)
         self.plalist = []
-        self.load("entrypt.pla")
+        #self.load("entrypt.pla")
         self.mode = MODE_IDLE
         self.figure = plt.figure()
         self.canvas = FigureCanvas(self.figure)
@@ -524,6 +525,14 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
                 self.showTempStatus("Excluded cell %i %i"%t)
                 self.currentGroup.toggle_cell_exc(y,x)
                 self.renderItem()
+        elif self.mode == MODE_CFM_ROW:
+            self.modeParam1 = numpy.array([int(qimg_xy.x()),int(qimg_xy.y())]) + self.renderingItem.base_coord()
+            t = self.currentGroup.get_cell_coord(self.modeParam1[0], self.modeParam1[1])
+            if t:
+                x,y = t
+                self.showTempStatus("Confirmed row %i %i"%t)
+                self.currentGroup.set_row_confirmed(y)
+                self.renderItem()
 
     @QtCore.pyqtSlot()
     def on_copyTemplateRefPushButton_clicked(self):
@@ -566,6 +575,10 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
     @QtCore.pyqtSlot()
     def on_action_ExcCell_triggered(self):
         self.startExcludeCell()
+
+    @QtCore.pyqtSlot()
+    def on_action_ConfirmRow_triggered(self):
+        self.startConfirmRow()
 
     @QtCore.pyqtSlot()
     def on_action_IdleMode_triggered(self):
@@ -628,6 +641,16 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
             return
         self.showModalStatus("Click cells to exclude from reference (Esc to cancel)")
         self.mode = MODE_EXC_CELL
+
+    def startConfirmRow(self):
+        if not isinstance(self.selectedItem, pla_group):
+            self.showTempStatus("Error: rows can only be confirmed on a group")
+            return
+        if not self.renderingItem == self.currentPlane:
+            self.showTempStatus("Error: groups can only be confirmed when the plane view is active")
+            return
+        self.showModalStatus("Click cells to exclude from reference (Esc to cancel)")
+        self.mode = MODE_CFM_ROW
 
     def modelIndexToArray(self, mi):
         arr = []
@@ -768,6 +791,34 @@ class PlaDecMainWin(QtWidgets.QMainWindow):
         print(path)
         fp = open(path,"w")
         fp.write(self.currentPLA.plane_report())
+        fp.close()
+
+    @QtCore.pyqtSlot()
+    def on_action_ExportPlaneDumps_triggered(self):
+        if not self.currentPLA:
+            self.showTempStatus("Nothing to save")
+        path = QFileDialog.getSaveFileName(None, 'Generate plane dumps for %s'%self.currentPLA.name, '.', 'Text files (*.txt);;All files (*.*)')
+        if path == ('',''):
+            return
+        path = self.handleFileSelection(path)
+        basepath = path[:-4]
+        print(path)
+        for p in self.currentPLA.planes:
+            fp = open(basepath+"_"+p.name.replace(' ','_')+".txt","w")
+            fp.write(p.cell_dump())
+            fp.close()
+
+    @QtCore.pyqtSlot()
+    def on_action_ExportC_triggered(self):
+        if not self.currentPLA:
+            self.showTempStatus("Nothing to save")
+        path = QFileDialog.getSaveFileName(None, 'Generate simulator for %s'%self.currentPLA.name, '.', 'C source code (*.c);;All files (*.*)')
+        if path == ('',''):
+            return
+        path = self.handleFileSelection(path)
+        print(path)
+        fp = open(path,"w")
+        fp.write(self.currentPLA.gen_sim())
         fp.close()
 
     @QtCore.pyqtSlot()

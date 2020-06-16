@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>965</width>
-    <height>1234</height>
+    <height>1281</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -57,14 +57,17 @@
    </property>
    <widget class="QMenu" name="menuFile">
     <property name="title">
-     <string>F&amp;ile</string>
+     <string>Fi&amp;le</string>
     </property>
     <addaction name="action_NewPLA"/>
     <addaction name="action_OpenFile"/>
     <addaction name="separator"/>
     <addaction name="action_SaveFile"/>
     <addaction name="action_SaveFileAs"/>
+    <addaction name="separator"/>
     <addaction name="action_ExportPlaneReport"/>
+    <addaction name="action_ExportPlaneDumps"/>
+    <addaction name="action_ExportC"/>
     <addaction name="separator"/>
     <addaction name="action_Quit"/>
    </widget>
@@ -79,6 +82,7 @@
     <addaction name="action_ResetCell"/>
     <addaction name="action_ExcCell"/>
     <addaction name="action_IdleMode"/>
+    <addaction name="action_ConfirmRow"/>
    </widget>
    <widget class="QMenu" name="menu_View">
     <property name="title">
@@ -86,6 +90,7 @@
     </property>
     <addaction name="action_ShowCellBoxes"/>
     <addaction name="action_ShowCellValues"/>
+    <addaction name="action_ShowZeroCells"/>
     <addaction name="actionView_monochrome"/>
     <addaction name="action_ClearPlot"/>
    </widget>
@@ -299,7 +304,7 @@
           </property>
          </widget>
         </item>
-        <item row="5" column="1" colspan="2">
+        <item row="6" column="1" colspan="2">
          <spacer name="horizontalSpacer_2">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
@@ -311,13 +316,6 @@
            </size>
           </property>
          </spacer>
-        </item>
-        <item row="2" column="1" colspan="2">
-         <widget class="QCheckBox" name="planeAndCheckbox">
-          <property name="text">
-           <string>Is AND plane</string>
-          </property>
-         </widget>
         </item>
         <item row="3" column="1" colspan="2">
          <widget class="QComboBox" name="planeInputOrientationCombo">
@@ -333,10 +331,27 @@
           </item>
          </widget>
         </item>
+        <item row="2" column="1" colspan="2">
+         <widget class="QCheckBox" name="planeAndCheckbox">
+          <property name="text">
+           <string>Is AND plane</string>
+          </property>
+         </widget>
+        </item>
         <item row="4" column="1" colspan="2">
          <widget class="QCheckBox" name="planeInputPolCheckbox">
           <property name="text">
            <string>Inverted inputs</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="1">
+         <widget class="QSpinBox" name="intOffsetSpin"/>
+        </item>
+        <item row="5" column="0">
+         <widget class="QLabel" name="label_26">
+          <property name="text">
+           <string>Internal offset:</string>
           </property>
          </widget>
         </item>
@@ -349,6 +364,104 @@
         <string>Group</string>
        </property>
        <layout class="QGridLayout" name="gridLayout_5">
+        <item row="23" column="1">
+         <widget class="QSpinBox" name="bitTrimSpinStart"/>
+        </item>
+        <item row="5" column="2">
+         <widget class="QDoubleSpinBox" name="cellSizeSpinH">
+          <property name="singleStep">
+           <double>0.010000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="20" column="0">
+         <widget class="QLabel" name="label_19">
+          <property name="text">
+           <string>Binary size:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="10" column="1" colspan="2">
+         <widget class="QComboBox" name="cellOrientationCombo">
+          <item>
+           <property name="text">
+            <string>Vertical</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Horizontal</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QSpinBox" name="groupSizeColSpin"/>
+        </item>
+        <item row="10" column="0">
+         <widget class="QLabel" name="label_15">
+          <property name="text">
+           <string>Cell orientation:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="2">
+         <widget class="QSpinBox" name="groupSizeRowSpin"/>
+        </item>
+        <item row="19" column="1">
+         <widget class="QSpinBox" name="groupStartColSpin">
+          <property name="maximum">
+           <number>512</number>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="2">
+         <widget class="QLabel" name="label_9">
+          <property name="text">
+           <string>Rows</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="2">
+         <widget class="QLabel" name="label_13">
+          <property name="text">
+           <string>Y</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item row="18" column="1">
+         <widget class="QLabel" name="label_20">
+          <property name="text">
+           <string>Columns</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item row="23" column="2">
+         <widget class="QSpinBox" name="bitTrimSpinEnd"/>
+        </item>
+        <item row="19" column="0">
+         <widget class="QLabel" name="label_5">
+          <property name="text">
+           <string>Binary start:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="7" column="0">
+         <widget class="QLabel" name="label_14">
+          <property name="text">
+           <string>Cell padding:</string>
+          </property>
+         </widget>
+        </item>
         <item row="20" column="1">
          <widget class="QSpinBox" name="binSizeSpinC">
           <property name="enabled">
@@ -383,6 +496,13 @@
         <item row="11" column="1" colspan="2">
          <widget class="QSpinBox" name="classCountSpin"/>
         </item>
+        <item row="19" column="2">
+         <widget class="QSpinBox" name="groupStartRowSpin">
+          <property name="maximum">
+           <number>16384</number>
+          </property>
+         </widget>
+        </item>
         <item row="18" column="2">
          <widget class="QLabel" name="label_21">
           <property name="text">
@@ -392,9 +512,6 @@
            <set>Qt::AlignCenter</set>
           </property>
          </widget>
-        </item>
-        <item row="19" column="2">
-         <widget class="QSpinBox" name="groupStartRowSpin"/>
         </item>
         <item row="13" column="0" colspan="3">
          <widget class="QPushButton" name="plotRefButton">
@@ -438,107 +555,6 @@
           </property>
          </widget>
         </item>
-        <item row="5" column="2">
-         <widget class="QDoubleSpinBox" name="cellSizeSpinH">
-          <property name="singleStep">
-           <double>0.010000000000000</double>
-          </property>
-         </widget>
-        </item>
-        <item row="20" column="0">
-         <widget class="QLabel" name="label_19">
-          <property name="text">
-           <string>Binary size:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="23" column="1">
-         <widget class="QSpinBox" name="bitTrimSpinStart"/>
-        </item>
-        <item row="10" column="0">
-         <widget class="QLabel" name="label_15">
-          <property name="text">
-           <string>Cell orientation:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="10" column="1" colspan="2">
-         <widget class="QComboBox" name="cellOrientationCombo">
-          <item>
-           <property name="text">
-            <string>Vertical</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>Horizontal</string>
-           </property>
-          </item>
-         </widget>
-        </item>
-        <item row="2" column="1">
-         <widget class="QSpinBox" name="groupSizeColSpin"/>
-        </item>
-        <item row="0" column="2">
-         <widget class="QLabel" name="label_9">
-          <property name="text">
-           <string>Rows</string>
-          </property>
-          <property name="alignment">
-           <set>Qt::AlignCenter</set>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="2">
-         <widget class="QSpinBox" name="groupSizeRowSpin"/>
-        </item>
-        <item row="19" column="1">
-         <widget class="QSpinBox" name="groupStartColSpin"/>
-        </item>
-        <item row="4" column="2">
-         <widget class="QLabel" name="label_13">
-          <property name="text">
-           <string>Y</string>
-          </property>
-          <property name="alignment">
-           <set>Qt::AlignCenter</set>
-          </property>
-         </widget>
-        </item>
-        <item row="18" column="1">
-         <widget class="QLabel" name="label_20">
-          <property name="text">
-           <string>Columns</string>
-          </property>
-          <property name="alignment">
-           <set>Qt::AlignCenter</set>
-          </property>
-         </widget>
-        </item>
-        <item row="19" column="0">
-         <widget class="QLabel" name="label_5">
-          <property name="text">
-           <string>Binary start:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="7" column="0">
-         <widget class="QLabel" name="label_14">
-          <property name="text">
-           <string>Cell padding:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="23" column="2">
-         <widget class="QSpinBox" name="bitTrimSpinEnd"/>
-        </item>
-        <item row="5" column="0">
-         <widget class="QLabel" name="label_11">
-          <property name="text">
-           <string>Cell size:</string>
-          </property>
-         </widget>
-        </item>
         <item row="21" column="1" colspan="2">
          <widget class="QComboBox" name="bitOrientationCombo">
           <item>
@@ -553,7 +569,14 @@
           </item>
          </widget>
         </item>
-        <item row="24" column="1" colspan="2">
+        <item row="5" column="0">
+         <widget class="QLabel" name="label_11">
+          <property name="text">
+           <string>Cell size:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="25" column="1" colspan="2">
          <spacer name="horizontalSpacer_3">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
@@ -590,6 +613,13 @@
           </layout>
          </widget>
         </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="label_10">
+          <property name="text">
+           <string>Size:</string>
+          </property>
+         </widget>
+        </item>
         <item row="12" column="1" colspan="2">
          <widget class="QCheckBox" name="templRefCheckbox">
           <property name="text">
@@ -607,10 +637,10 @@
           </property>
          </widget>
         </item>
-        <item row="2" column="0">
-         <widget class="QLabel" name="label_10">
+        <item row="23" column="0">
+         <widget class="QLabel" name="label_24">
           <property name="text">
-           <string>Size:</string>
+           <string>Discard bits:</string>
           </property>
          </widget>
         </item>
@@ -631,13 +661,6 @@
           </property>
           <property name="alignment">
            <set>Qt::AlignCenter</set>
-          </property>
-         </widget>
-        </item>
-        <item row="23" column="0">
-         <widget class="QLabel" name="label_24">
-          <property name="text">
-           <string>Discard bits:</string>
           </property>
          </widget>
         </item>
@@ -662,7 +685,7 @@
   </widget>
   <widget class="QDockWidget" name="plotDock">
    <property name="windowTitle">
-    <string>Cell plot</string>
+    <string>&amp;Cell plot</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>1</number>
@@ -688,6 +711,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="action_NewPLA"/>
    <addaction name="action_OpenFile"/>
    <addaction name="action_SaveFile"/>
   </widget>
@@ -708,10 +732,11 @@
    <addaction name="action_SetCell"/>
    <addaction name="action_ResetCell"/>
    <addaction name="action_ExcCell"/>
+   <addaction name="action_ConfirmRow"/>
   </widget>
   <widget class="QDockWidget" name="paletteDock">
    <property name="windowTitle">
-    <string>Palette</string>
+    <string>&amp;Palette</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>1</number>
@@ -803,53 +828,6 @@
     <layout class="QGridLayout" name="gridLayout_10">
      <item row="0" column="0">
       <widget class="QPlainTextEdit" name="textOutputEdit">
-       <property name="font">
-        <font>
-         <family>Monospace</family>
-        </font>
-       </property>
-       <property name="readOnly">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </widget>
-  </widget>
-  <widget class="QDockWidget" name="consoleDock">
-   <property name="windowTitle">
-    <string>I&amp;nteractive console</string>
-   </property>
-   <attribute name="dockWidgetArea">
-    <number>8</number>
-   </attribute>
-   <widget class="QWidget" name="dockWidgetContents_6">
-    <layout class="QGridLayout" name="gridLayout_11">
-     <item row="1" column="2">
-      <widget class="QPushButton" name="consoleGo">
-       <property name="text">
-        <string>Go</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1">
-      <widget class="QLineEdit" name="consoleLineEdit">
-       <property name="font">
-        <font>
-         <family>Monospace</family>
-        </font>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="label_25">
-       <property name="text">
-        <string>&gt;&gt;&gt;</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="0" colspan="3">
-      <widget class="QPlainTextEdit" name="consoleOutputEdit">
        <property name="font">
         <font>
          <family>Monospace</family>
@@ -1003,7 +981,33 @@
   </action>
   <action name="action_ExportPlaneReport">
    <property name="text">
-    <string>Export plane report</string>
+    <string>&amp;Export plane report...</string>
+   </property>
+  </action>
+  <action name="action_ExportPlaneDumps">
+   <property name="text">
+    <string>&amp;Export plane dumps...</string>
+   </property>
+  </action>
+  <action name="action_ExportC">
+   <property name="text">
+    <string>Export sim. source (&amp;C)...</string>
+   </property>
+  </action>
+  <action name="action_ShowZeroCells">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show &amp;zero cells</string>
+   </property>
+  </action>
+  <action name="action_ConfirmRow">
+   <property name="text">
+    <string>Confirm row</string>
+   </property>
+   <property name="shortcut">
+    <string>J</string>
    </property>
   </action>
  </widget>

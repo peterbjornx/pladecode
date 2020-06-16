@@ -33,13 +33,19 @@ class pla_plane:
         self.input_pol = False
         self.minterms_valid = False
         self.cell_values_valid = False
+        self.outputs_valid = False
+        self.int_offset = 0
 
     def invalidate_cells(self):
         self.cell_values_valid = False
         self.invalidate_minterms()
+        self.invalidate_outputs()
 
     def invalidate_minterms(self):
         self.minterms_valid = False
+
+    def invalidate_outputs(self):
+        self.outputs_valid = False
 
     def ensure_minterms(self):
         if not self.is_and:
@@ -49,7 +55,7 @@ class pla_plane:
         self.ensure_cells()
         c = self.cells
         if self.horiz_inputs:
-            c.transpose()
+            c = c.transpose()
         s = numpy.shape(c)
         self.input_count  = s[0] // 2
         self.output_count = s[1]
@@ -70,27 +76,93 @@ class pla_plane:
         #self.strip_underspecified()
         #print("done")
 
+    def ensure_outputs(self):
+        if self.is_and:
+            return
+        if self.outputs_valid:
+            return
+        self.ensure_cells()
+        c = self.cells
+        if self.horiz_inputs:
+            c = c.transpose()
+        self.outputs = c
+        self.input_count = numpy.shape(c)[0]
+        self.output_count = numpy.shape(c)[1]
+        self.outputs_valid = True
+
+    def generate_c_orplane(self):
+        res = ""
+        name = self.pla.name+"_"+self.name
+        self.ensure_outputs()
+        grsz = 32
+        grc = (self.output_count + grsz - 1) // grsz
+        arr = "uint32_t %s[%2i][%2i] = "%(name, self.input_count, grc)
+        arrb = []
+        for i in self.outputs:
+            arra = []
+            for j in range(0, grc):
+                gnp = i[j*grsz:(j+1)*grsz]
+                gi = pla_plane.np_to_int(gnp)
+                arra.append("0x%08X"%gi)
+            arra = "{ "+", ".join(arra) + " }"
+            arrb.append(arra)
+        arrb = "{\n\t" +",\n\t".join(arrb) +" };\n"
+        res = """
+%s
+#define %s_size    (%i)
+#define %s_bits    (%i)
+#define %s_offset  (%i)
+#define %s_groups  (%i)
+        """%( arr+arrb,
+              name, self.input_count,
+              name, self.output_count,
+              name, self.int_offset,
+              name, grc)
+        return res
+
     def generate_c_andplane(self):
         res = ""
+        name = self.pla.name+"_"+self.name
         self.ensure_minterms()
         if self.input_count > 31:
             return "Not supported for input size > int32"
-        mask = []
-        val = []
-        for i in self.minterms:
-            mask.append("0x%x"%pla_plane.int_minterm(i,[1,2]))
-            val.append("0x%x"%pla_plane.int_minterm(i,[2]))
-        mask = ",".join(mask)
-        val = ",".join(val)
+        mask = ""
+        val = ""
+        j = 0
+        for ii,i in enumerate(self.minterms):
+            mask += "0x%08X"%pla_plane.int_minterm(i,[1,2])
+            val  += "0x%08X"%pla_plane.int_minterm(i,[2])
+            if ii == self.output_count - 1:
+                pass
+            elif (ii % 8) == 7:
+                mask += ",\n\t"
+                val  += ",\n\t"
+            else:
+                mask += ", "
+                val  += ", "
         res = """
-    uint32_t andplane_mask[%i] = {%s};
-    uint32_t andplane_val[%i] = {%s};
-        """%(self.input_count,mask,self.input_count,val)
+#define  %s_offset       (%i)
+#define  %s_size         (%i)
+uint32_t %s_mask[%2i] = {%s};
+uint32_t %s_val [%2i] = {%s};
+#define  %s_test(v,i)    ((v & %s_mask[i]) == %s_val[i]) 
+        """%(name,self.int_offset,
+             name,self.output_count,
+             name,self.output_count,mask,
+             name,self.output_count,val,
+             name,name,name)
         return res
+
+    def generate_c(self):
+        if self.is_and:
+            return self.generate_c_andplane()
+        else:
+            return self.generate_c_orplane()
 
     def set_input_orientation(self, val):
         self.horiz_inputs = val
         self.invalidate_minterms()
+        self.invalidate_outputs()
 
     def set_and_plane(self,val):
         self.is_and = val
@@ -168,13 +240,20 @@ class pla_plane:
         self.cell_values_valid = True
 
     @classmethod
+    def np_to_int(cls, a):
+        i = 0
+        for j,v in enumerate(a):
+            if v:
+                i |= 1 << j
+        return i
+
+    @classmethod
     def int_minterm(cls, mt, vm1):
         i = 0
         for j,v in enumerate(mt[::-1]):
             if v in vm1:
                 i |= 1 << j
         return i
-
 
     @classmethod
     def str_minterm(cls, mt):
@@ -287,9 +366,24 @@ class pla_plane:
             rep+="minterms conflict:%i\n"%int(self.minterms_conflict)
             for i in range(0,self.output_count):
                 rep+="%3i: %s\n"%(i,pla_plane.str_minterm(self.minterms[i,::]))
-            rep += self.generate_c_andplane()
+        rep += self.generate_c()
             #for i in self.input_list:
             #    rep+="ENN: %s\n"%(pla_plane.str_minterm(i))
+        return rep
+
+    def cell_dump(self):
+        self.ensure_cells()
+        rep = "#name:%s rows: %3i columns:%3i overlap:%i incomplete: %i\n"%\
+              (self.name, self.rows,self.cols,int(self.cells_overlap),int(self.cells_unset))
+        for i in range(0, self.rows):
+            r = ""
+            for j in range(0, self.cols):
+                if self.cells[i,j]:
+                    r += "1 "
+                else:
+                    r += "0 "
+            rep += r.rstrip() + "\n"
+        rep+="\n"
         return rep
 
     def render(self, mono=False, highlight=None, **kwargs ):
@@ -327,6 +421,7 @@ class pla_plane:
         dict["is_and"] = self.is_and
         dict["horiz_inputs"] = self.horiz_inputs
         dict["input_pol"] = self.input_pol
+        dict["int_offset"] = self.int_offset
 
         return dict
 
@@ -343,7 +438,8 @@ class pla_plane:
             self.is_and = dict["is_and"]
             self.horiz_inputs = dict["horiz_inputs"]
             self.input_pol = dict["input_pol"]
-
+        if "int_offset" in dict:
+            self.int_offset = dict["int_offset"]
 
     @classmethod
     def deserialize(cls, pla, dict):
