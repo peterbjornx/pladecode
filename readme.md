@@ -15,4 +15,4 @@ rompar (https://github.com/AdamLaurie/rompar) by Adam Laurie et al.
 
 For now, the tool is not considered complete or fit for end users. When it does reach that 
 point, I will add usage information here.
-![Example image](https://home.strw.leidenuniv.nl/~pbosch/pladec_or.png)
+![Example image](https://home.strw.leidenuniv.nl/~pbosch/pladec_x4l_and.png)
